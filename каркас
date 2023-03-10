@@ -1,0 +1,91 @@
+#include <iostream>
+#include <vector>
+#include <string> 
+#include <sstream>
+const int BASE = 100;
+
+class bigint{
+public:
+    std::vector<int> nums;
+    bigint(){
+        nums = {0};
+    }
+    bigint(unsigned int a){
+        nums.clear();
+        while (a != 0){
+            nums.push_back(a % BASE);
+            a = a / BASE;
+        }
+    }
+
+    bigint(std::string s) {
+        nums.clear();
+        int const BASE_LEN = (std::to_string(BASE)).size()-1;
+
+        while (s[0] == '0'){
+            s = s.substr(1);
+        }
+        for (auto i = s.size(); i > 0; i -= BASE_LEN) {
+            if (i < BASE_LEN) {
+                nums.push_back(std::stoi(s.substr(0, i)));
+            } 
+            else {
+                nums.push_back(std::stoi(s.substr(i - BASE_LEN, BASE_LEN)));
+            }
+        }
+        
+        
+    }
+
+    ~bigint() = default;
+
+};
+
+void check_plus(std::vector <int> &a){
+    for(unsigned int i = 0; i < a.size(); i++){
+        if(a[i] > BASE - 1){
+            if(i == a.size()-1){
+                a.push_back(0);
+            }
+            a[i+1] +=a[i]/BASE;
+            a[i] = a[i] % BASE;
+        }
+    }
+}
+
+bigint operator+(bigint left, bigint right){
+    bigint res, dop;
+    unsigned int n;
+    if(left.nums.size() < right.nums.size()){
+        res = right;
+        dop = left;
+    }
+    else{
+        res = left;
+        dop = right;
+    }
+    n = dop.nums.size();
+    for(unsigned int i = 0; i < n; i++){
+        res.nums[i] += dop.nums[i];
+    }
+    check_plus(res.nums);
+    return res;
+}
+std::string to_string(bigint x){
+    std::string s;
+    for(int i = x.nums.size()-1; i >= 0; --i){
+        s+= std::to_string(x.nums[i]);
+    }
+   // std::cout <<  <<"\n";
+    return s;
+}
+
+int main(){
+    bigint a(456), b("000123");
+    //bigint c = b + 50005;
+    //std::cout << to_string(b) <<  std::endl << to_string(a);
+    for(auto i = 0; i < b.nums.size() ; i++){
+        std::cout << i << ": "<<b.nums[i] << "; ";
+    }
+    return 0;
+}
