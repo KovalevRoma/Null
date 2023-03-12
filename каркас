@@ -1,61 +1,103 @@
 #include <iostream>
 #include <vector>
-#include <string> 
-#include <sstream>
+#include <string>
+#include <cmath>
+
 const int BASE = 100;
+const int BASE_LEN = static_cast<int>(std::log10(BASE));
 
 class bigint{
-public:
+private:
     std::vector<int> nums;
+public:
+
     bigint(){
         nums = {0};
     }
+
     bigint(unsigned int a){
         nums.clear();
+        if(a == 0){
+            nums.push_back(0);
+        }
         while (a != 0){
             nums.push_back(a % BASE);
             a = a / BASE;
         }
     }
-
     bigint(std::string s) {
         nums.clear();
-        int const BASE_LEN = (std::to_string(BASE)).size()-1;
-
-        while (s[0] == '0'){
+        while (s.size() > 1 && s[0] == '0'){
             s = s.substr(1);
         }
-        for (auto i = s.size(); i > 0; i -= BASE_LEN) {
+        for (auto i = s.length(); i > 0; i -= BASE_LEN) {
             if (i < BASE_LEN) {
+                //std::cout << s.substr(0,i) << std::endl;
                 nums.push_back(std::stoi(s.substr(0, i)));
+                break;
             } 
             else {
+                //std::cout << s.substr(i - BASE_LEN, BASE_LEN) << std::endl;
                 nums.push_back(std::stoi(s.substr(i - BASE_LEN, BASE_LEN)));
             }
         }
         
         
     }
-
+    explicit operator unsigned int() const{
+        unsigned int BASE_TAIL = 1, ans = 0;
+        for(auto k : (*this).nums){
+            ans+= k * BASE_TAIL;
+            BASE_TAIL *= BASE;
+        }
+        return ans;
+    }
+    friend bigint operator-(const bigint& left,const bigint& right);
+    friend bigint operator+(const bigint& left, const bigint& right);
+    friend std::string to_string(bigint x);
+    friend bool operator==(const bigint& left, const bigint& right);
+    friend bool operator>(const bigint &left, const bigint& right);
+    bigint& operator++ ()
+    {
+        *this = *this + 1;
+        return *this;
+    }
+    bigint& operator-- ()
+    {
+        *this = *this - 1;
+        return *this;
+    }
+    bigint operator++ (int){
+        bigint copy {*this};
+        ++(*this);
+        return copy;
+    }
+    bigint operator-- (int){
+        bigint copy {*this};
+        --(*this);
+        return copy;
+    }
     ~bigint() = default;
-
 };
 
-void check_plus(std::vector <int> &a){
-    for(unsigned int i = 0; i < a.size(); i++){
-        if(a[i] > BASE - 1){
-            if(i == a.size()-1){
-                a.push_back(0);
-            }
-            a[i+1] +=a[i]/BASE;
-            a[i] = a[i] % BASE;
+bigint operator-(const bigint& left,const bigint& right){
+    auto n = right.nums.size();
+    bigint dop = left;
+    for(auto i = 0; i < n; i++){
+        dop.nums[i] -= right.nums[i];
+        if(dop.nums[i] < 0){
+            dop.nums[i] += BASE;
+            dop.nums[i+1]--;
         }
     }
+    int i = dop.nums.size() - 1;
+    while(i > 0 && dop.nums[i--] == 0){
+        dop.nums.pop_back();
+    }
+    return dop;
 }
-
-bigint operator+(bigint left, bigint right){
+bigint operator+(const bigint& left, const bigint& right){
     bigint res, dop;
-    unsigned int n;
     if(left.nums.size() < right.nums.size()){
         res = right;
         dop = left;
@@ -64,28 +106,100 @@ bigint operator+(bigint left, bigint right){
         res = left;
         dop = right;
     }
-    n = dop.nums.size();
-    for(unsigned int i = 0; i < n; i++){
+    auto n = dop.nums.size();
+    for(auto i = 0; i < n; i++){
         res.nums[i] += dop.nums[i];
+        if(res.nums[i] > BASE - 1){
+            if(i == res.nums.size()-1){
+                res.nums.push_back(0);
+            }
+            res.nums[i+1] += res.nums[i]/BASE;
+            res.nums[i] = res.nums[i] % BASE;
+        }
     }
-    check_plus(res.nums);
     return res;
 }
+
 std::string to_string(bigint x){
     std::string s;
-    for(int i = x.nums.size()-1; i >= 0; --i){
-        s+= std::to_string(x.nums[i]);
+    auto len = x.nums.size()-1;
+    for(int i = static_cast<int>(len); i >= 0; --i){
+        std::string str_elem;
+        str_elem =  std::to_string(x.nums[i]);
+        if(i != len) {
+            str_elem = std::string(BASE_LEN - str_elem.size(), '0') + str_elem;
+        }
+        s += str_elem;
+
+
     }
-   // std::cout <<  <<"\n";
     return s;
 }
 
-int main(){
-    bigint a(456), b("000123");
-    //bigint c = b + 50005;
-    //std::cout << to_string(b) <<  std::endl << to_string(a);
-    for(auto i = 0; i < b.nums.size() ; i++){
-        std::cout << i << ": "<<b.nums[i] << "; ";
-    }
-    return 0;
+bigint operator+=(bigint &left, const bigint& right){
+    left = left+right;
+    return left;
 }
+bigint operator-=(bigint &left, const bigint& right){
+    left = left-right;
+    return left;
+}
+
+bool operator==(const bigint& left, const bigint& right){
+    if(left.nums == right.nums){
+        return true;
+    }
+    return false;
+}
+bool operator!=(const bigint &left, const bigint& right) {
+    return !(left == right);
+}
+bool operator>(const bigint &left, const bigint& right){
+
+    if(left.nums.size() == right.nums.size()){
+        if(left == right) {
+            return false;
+        }
+        else {
+            auto i = left.nums.size() - 1;
+            while (left.nums[i] == right.nums[i]) {
+                i--;
+            }
+            return (left.nums[i] > right.nums[i]);
+        }
+    }
+    return(left.nums.size() > right.nums.size());
+}
+bool operator<(const bigint &left, const bigint& right) {
+    return(right > left);
+}
+bool operator<=(const bigint &left, const bigint& right) {
+    return ((left < right) || (left == right));
+}
+bool operator>=(const bigint &left, const bigint& right) {
+    return ((left > right) || (left == right));
+}
+
+std::ostream &operator<<(std::ostream &os, const bigint &x) {
+    std::string s = to_string(x);
+    os << s;
+    return os;
+}
+
+std::istream &operator>>(std::istream &ss, bigint &other) {
+    std::string str;
+    ss >> str;
+    other = bigint(str);
+    return ss;
+}
+
+//int main(){
+//    bigint a = 50005, b = 16767;
+//    std::cin >> a;
+//    std::cout << to_string(a) << "\n" << to_string(b) <<"\n";
+//
+//    std::cout <<"piz " <<  a;
+//    //std::cout << to_string(b) <<  std::endl << to_string(a) << std::endl << to_string(c) << std:: endl;
+//
+//    return 0;
+//}
